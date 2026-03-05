@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 BASE_IN="data/4ddress_processed"
 BASE_OUT="results"
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=2
 
 idx=0
 for dir in "${BASE_IN}"/*/; do
   ((idx++))
   
-  if (( idx % 2 == 0 )); then
+  if (( idx % 2 == 1 )); then
     continue
   fi
   name=$(basename "$dir")

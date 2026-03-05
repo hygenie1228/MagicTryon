@@ -281,8 +281,8 @@ width = adjust_size(width // 2)
 height = adjust_size(height // 2)
 
 sample_size = [height, width]
-video_length = 130
-fps = 16
+video_length = frame_count
+fps = v_fps
 
 negative_prompt = "衣服质量差的，纽扣不整齐的，色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
 
@@ -307,14 +307,13 @@ for cloth_id in cloth_id_book:
     print(prompt)
 
     with torch.no_grad():
-        video_length = int((video_length - 1) // vae.config.temporal_compression_ratio * vae.config.temporal_compression_ratio) + 1 if video_length != 1 else 1
-        latent_frames = (video_length - 1) // vae.config.temporal_compression_ratio + 1
-
-        input_video, masked_video, mask_video, pose_video, _, clip_image, cloth_image, cloth_line_image = get_video_to_video_latent_tryon_full(
+        input_video, masked_video, mask_video, pose_video, _, clip_image, cloth_image, cloth_line_image, actual_length = get_video_to_video_latent_tryon_full(
             org_video_path, masked_video_path, mask_video_path, pose_video_path, 
-            video_length=video_length, sample_size=sample_size, fps=fps, 
+            sample_size=sample_size, fps=fps, 
             ref_image=cloth_image_path, line_image_path=cloth_line_image_path
         )
+        # Keep num_frames consistent with actual loaded/padded video tensors (may include padding)
+        video_length = input_video.shape[2]
 
         sample = pipeline(
             prompt,
@@ -335,6 +334,16 @@ for cloth_id in cloth_id_book:
         ).videos
 
         results = repaint(input_video, mask_video, sample) if use_repaint else sample
+
+        # Crop back to the true available frame count (before internal padding),
+        # so that outputs match the actual video length.
+        if actual_length and results.shape[2] > actual_length:
+            results = results[:, :, :actual_length]
+            input_video = input_video[:, :, :actual_length]
+            masked_video = masked_video[:, :, :actual_length]
+            mask_video = mask_video[:, :, :actual_length]
+            pose_video = pose_video[:, :, :actual_length]
+            video_length = actual_length
 
         print("Sample min value:", sample.min().item())
         print("Sample max value:", sample.max().item())

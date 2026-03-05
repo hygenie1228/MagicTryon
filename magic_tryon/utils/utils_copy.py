@@ -442,81 +442,90 @@ def get_video_to_video_latent_tryon_baseline(org_video_path, masked_video_path, 
 
 
 def get_video_to_video_latent_tryon_full(org_video_path, masked_video_path, mask_video_path, pose_video_path, 
-                                    sample_size, fps=None, validation_video_mask=None, ref_image=None, line_image_path=None):
+                                    video_length, sample_size, fps=None, validation_video_mask=None, ref_image=None, line_image_path=None):
     if org_video_path is not None:
-        def _read_video_frames(video_source):
-            if isinstance(video_source, str):
-                cap = cv2.VideoCapture(video_source)
-                frames = []
+        if isinstance(org_video_path, str):
+            cap = cv2.VideoCapture(org_video_path)
+            input_video = []
 
-                original_fps = cap.get(cv2.CAP_PROP_FPS)
-                if fps is None:
-                    frame_skip = 1
-                else:
-                    # Guard against fps > original_fps (or invalid FPS metadata)
-                    frame_skip = max(1, int((original_fps or 0) // fps))
+            original_fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_skip = 1 if fps is None else int(original_fps // fps)
 
-                frame_count = 0
-                while True:
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
+            frame_count = 0
 
-                    if frame_count % frame_skip == 0:
-                        frame = cv2.resize(frame, (sample_size[1], sample_size[0]))
-                        frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-                    frame_count += 1
+                if frame_count % frame_skip == 0:
+                    frame = cv2.resize(frame, (sample_size[1], sample_size[0]))
+                    input_video.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
-                cap.release()
-                return frames
+                frame_count += 1
 
-            return video_source
+            cap.release()
+        else:
+            input_video = org_video_path
 
-        def _pad_last_frame(arr: np.ndarray, target_len: int) -> np.ndarray:
-            if target_len <= arr.shape[0]:
-                return arr[:target_len]
-            if arr.shape[0] == 0:
-                return arr
-            pad = np.repeat(arr[-1:, ...], repeats=target_len - arr.shape[0], axis=0)
-            return np.concatenate([arr, pad], axis=0)
+        input_video = torch.from_numpy(np.array(input_video))[:video_length]
+        input_video = input_video.permute([3, 0, 1, 2]).unsqueeze(0) / 255
+        # input_video = input_video * 2 - 1
 
-        input_video_raw = _read_video_frames(org_video_path)
-        masked_video_raw = _read_video_frames(masked_video_path)
-        mask_video_raw = _read_video_frames(mask_video_path)
-        pose_video_raw = _read_video_frames(pose_video_path)
+        if isinstance(masked_video_path, str):
+            cap = cv2.VideoCapture(masked_video_path)
+            masked_video = []
 
-        input_video_np = np.array(input_video_raw)
-        masked_video_np = np.array(masked_video_raw)
-        mask_video_np = np.array(mask_video_raw)
-        pose_video_np = np.array(pose_video_raw)
+            original_fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_skip = 1 if fps is None else int(original_fps // fps)
 
-        available_lengths = [
-            input_video_np.shape[0],
-            masked_video_np.shape[0],
-            mask_video_np.shape[0],
-            pose_video_np.shape[0],
-        ]
-        min_available = min(available_lengths)
-        actual_length = min_available
-        base_len = actual_length
-        if base_len < 1:
-            raise ValueError(
-                f"No frames available to build inputs (lengths={available_lengths}). "
-                f"Check paths and decoding for: {org_video_path}, {masked_video_path}, {mask_video_path}, {pose_video_path}"
-            )
-        # Align so that (frames + 3) is divisible by 4 (pipeline groups by 4 after repeating the first frame 4x)
-        pad_to_align = (4 - ((base_len + 3) % 4)) % 4
-        aligned_len = base_len + pad_to_align
+            frame_count = 0
 
-        input_video_np = _pad_last_frame(input_video_np[:base_len], aligned_len)
-        masked_video_np = _pad_last_frame(masked_video_np[:base_len], aligned_len)
-        mask_video_np = _pad_last_frame(mask_video_np[:base_len], aligned_len)
-        pose_video_np = _pad_last_frame(pose_video_np[:base_len], aligned_len)
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-        input_video = torch.from_numpy(input_video_np).permute([3, 0, 1, 2]).unsqueeze(0) / 255
-        masked_video = torch.from_numpy(masked_video_np).permute([3, 0, 1, 2]).unsqueeze(0) / 255
-        mask_video = torch.from_numpy(mask_video_np).permute([3, 0, 1, 2]).unsqueeze(0) / 255
+                if frame_count % frame_skip == 0:
+                    frame = cv2.resize(frame, (sample_size[1], sample_size[0]))
+                    masked_video.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+                frame_count += 1
+
+            cap.release()
+        else:
+            masked_video = masked_video_path
+
+        masked_video = torch.from_numpy(np.array(masked_video))[:video_length]
+        masked_video = masked_video.permute([3, 0, 1, 2]).unsqueeze(0) / 255
+        # masked_video = masked_video * 2 - 1
+
+        if isinstance(mask_video_path, str):
+            cap = cv2.VideoCapture(mask_video_path)
+            mask_video = []
+
+            original_fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_skip = 1 if fps is None else int(original_fps // fps)
+
+            frame_count = 0
+
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                if frame_count % frame_skip == 0:
+                    frame = cv2.resize(frame, (sample_size[1], sample_size[0]))
+                    mask_video.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+                frame_count += 1
+
+            cap.release()
+        else:
+            mask_video = mask_video_path
+
+        mask_video = torch.from_numpy(np.array(mask_video))[:video_length]
+        mask_video = mask_video.permute([3, 0, 1, 2]).unsqueeze(0) / 255
 
         mask_video[mask_video < 0.5] = 0
         mask_video[mask_video >= 0.5] = 1
@@ -526,8 +535,34 @@ def get_video_to_video_latent_tryon_full(org_video_path, masked_video_path, mask
             print("mask_latents contains only 0 or 1.")
         else:
             print("mask_latents contains values other than 0 or 1.")
+    
 
-        pose_video = torch.from_numpy(pose_video_np).permute([3, 0, 1, 2]).unsqueeze(0) / 255
+        if isinstance(pose_video_path, str):
+            cap = cv2.VideoCapture(pose_video_path)
+            pose_video = []
+
+            original_fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_skip = 1 if fps is None else int(original_fps // fps)
+
+            frame_count = 0
+
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                if frame_count % frame_skip == 0:
+                    frame = cv2.resize(frame, (sample_size[1], sample_size[0]))
+                    pose_video.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+                frame_count += 1
+
+            cap.release()
+        else:
+            pose_video = pose_video_path
+
+        pose_video = torch.from_numpy(np.array(pose_video))[:video_length]
+        pose_video = pose_video.permute([3, 0, 1, 2]).unsqueeze(0) / 255
         # pose_video = pose_video * 2 - 1
 
     
@@ -542,7 +577,7 @@ def get_video_to_video_latent_tryon_full(org_video_path, masked_video_path, mask
             input_video_mask = torch.zeros_like(input_video[:, :1])
             input_video_mask[:, :, :] = 255
     else:
-        input_video, masked_video, mask_video, pose_video, input_video_mask, actual_length = None, None, None, None, None, 0
+        input_video, input_video_mask = None, None
 
     if ref_image is not None:
         if isinstance(ref_image, str):
@@ -572,11 +607,7 @@ def get_video_to_video_latent_tryon_full(org_video_path, masked_video_path, mask
         clip_image = None
 
 
-    if ref_image is None:
-        cloth_image = None
-        line_image = None
-
-    return input_video, masked_video, mask_video, pose_video, input_video_mask, clip_image, cloth_image, line_image, actual_length
+    return input_video, masked_video, mask_video, pose_video, input_video_mask, clip_image, cloth_image, line_image
 
 
 def get_image_latent_tryon_full(org_video_path, masked_video_path, mask_video_path, pose_video_path, 

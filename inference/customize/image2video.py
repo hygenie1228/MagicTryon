@@ -25,7 +25,7 @@ def images_to_video(image_folder, output_video_path, fps=30, i=None):
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
     # 读取图像并写入视频
-    for image_file in image_files:
+    for image_file in image_files[::2]:
         image_path = os.path.join(image_folder, image_file)
         img = cv2.imread(image_path)
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
     os.makedirs(out_path, exist_ok=True)
 
-    images_to_video(f'{base_path}/images', f'{base_path}/video.mp4', fps=30, i=last_i)
-    images_to_video(f'{base_path}/agnostic', f'{base_path}/agnostic.mp4', fps=30, i=last_i)
-    images_to_video(f'{base_path}/masks', f'{base_path}/mask.mp4', fps=30, i=last_i)
-    images_to_video(f'{base_path}/densepose', f'{base_path}/densepose.mp4', fps=30, i=last_i)
+    images_to_video(f'{base_path}/images', f'{base_path}/video.mp4', fps=15, i=last_i)
+    images_to_video(f'{base_path}/agnostic', f'{base_path}/agnostic.mp4', fps=15, i=last_i)
+    images_to_video(f'{base_path}/masks', f'{base_path}/mask.mp4', fps=15, i=last_i)
+    images_to_video(f'{base_path}/densepose', f'{base_path}/densepose.mp4', fps=15, i=last_i)
