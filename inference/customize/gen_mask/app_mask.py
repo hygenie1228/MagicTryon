@@ -1,6 +1,7 @@
 from PIL import Image
 import torch
 import os
+import argparse
 import numpy as np
 from preprocess.utils_mask import get_mask_location
 from torchvision import transforms
@@ -8,6 +9,12 @@ from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--input', default='datasets/human_sample/lower_body/1060665_detail/video.mp4')
+parser.add_argument('--output', default='datasets/human_sample/lower_body/1060665_detail/images')
+parser.add_argument('--device', default='cpu')
+parser.add_argument('--part', default='upper_body')
+args = parser.parse_args()
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 def pil_to_binary_mask(pil_image, threshold=0):
@@ -36,7 +43,7 @@ tensor_transfrom = transforms.Compose(
     )
 
 
-def get_mask(img,garm_img,garment_des,is_checked,is_checked_crop,denoise_steps,seed, im_height, im_width,):
+def get_mask(img,garm_img,garment_des,is_checked,is_checked_crop,denoise_steps,seed, im_height, im_width, part='upper_body'):
     
     openpose_model.preprocessor.body_estimation.model.to(device)
 
@@ -62,21 +69,24 @@ def get_mask(img,garm_img,garment_des,is_checked,is_checked_crop,denoise_steps,s
 
     keypoints = openpose_model(human_img.resize((384,512)))
     model_parse, _ = parsing_model(human_img.resize((384,512)))
-    mask, _ = get_mask_location('hd', "upper_body", model_parse, keypoints)
-    #### if lower_body:
-    # mask, _ = get_mask_location('dc', "lower_body", model_parse, keypoints)
-    #### if dresses:
-    # mask, _ = get_mask_location('dc', "dresses", model_parse, keypoints)
+
+    if 'upper' in part:
+        mask, _ = get_mask_location('hd', "upper_body", model_parse, keypoints)
+    elif 'lower' in part:
+        mask, _ = get_mask_location('dc', "lower_body", model_parse, keypoints)
+    elif 'dress' in part:
+        mask, _ = get_mask_location('dc', "dresses", model_parse, keypoints)
+    else:
+        print(f'[WARN] Unkown cloth part name: {part}')
     mask = mask.resize((im_width,im_height))
     return mask
     
 
 # 路径设置
-image_dir = "datasets/person/customize/video/00001/images"
-mask_dir = "datasets/person/customize/video/00001/mask"
-
+image_dir = args.input
+mask_dir = args.output
 # 创建输出目录
-os.makedirs(mask_dir, exist_ok=True)
+# os.makedirs(mask_dir, exist_ok=True)
 
 # 处理所有图像
 for filename in sorted(os.listdir(image_dir)):
@@ -88,11 +98,10 @@ for filename in sorted(os.listdir(image_dir)):
         width, height = imgs.size
 
         # 获取mask
-        mask = get_mask(imgs, imgs, "Model", False, False, 30, 42, height, width,).convert("L")  # 转换为灰度图
+        mask = get_mask(imgs, imgs, "Model", False, False, 30, 42, height, width, args.part).convert("L")  # 转换为灰度图
 
         # 保存mask
-        mask_filename = filename.replace(".png", "_mask.png")
+        mask_filename = filename #.replace(".png", "_mask.png")
+
         mask.save(os.path.join(mask_dir, mask_filename))
-
-
         print(f"Processed and saved: {mask_filename}")

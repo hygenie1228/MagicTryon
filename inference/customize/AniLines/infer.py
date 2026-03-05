@@ -48,7 +48,7 @@ def process_image(path_in, path_out, **kwargs):
     img = cv2.cvtColor(np.array(Image.open(path_in)), cv2.COLOR_RGB2BGR)
     img = inference(img, **kwargs)
     img = Image.fromarray(img)
-    img.save(path_out)
+    img.save(path_out.replace('cloth.png', 'cloth_anilines.png'))
     return img
     
 def process_video(path_in, path_out, fourcc='mp4v', **kwargs):

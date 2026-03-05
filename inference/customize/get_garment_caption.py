@@ -1,15 +1,31 @@
 import os
+import argparse
 import torch
 import json
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
 
-# 设置图像文件夹路径
-image_folder = "datasets/garment/vivo/vivo_garment"  # ← 修改为你的图像文件夹路径
-output_folder = "datasets/garment/vivo/"
+parser = argparse.ArgumentParser()
+parser.add_argument("--image", type=str, default=None, help="Single image path (e.g. OUT_DIR/cloth.png)")
+parser.add_argument("--output", type=str, default=None, help="Output JSON path for caption (default: same dir as --image)")
+parser.add_argument("--image_folder", type=str, default="datasets/garment/vivo/vivo_garment", help="Image folder (used when --image not set)")
+parser.add_argument("--output_folder", type=str, default="datasets/garment/vivo/", help="Output folder for batch (used when --image not set)")
+args = parser.parse_args()
 
-# 设置图像文件夹路径
-output_path = os.path.join(output_folder, "vivo_caption_qwen.json")
+if args.image:
+    image_folder = os.path.dirname(args.image)
+    output_path = args.output or os.path.join(os.path.dirname(args.image), "cloth_caption.json")
+    image_paths = [args.image] if os.path.isfile(args.image) else []
+    if not image_paths:
+        raise FileNotFoundError(f"Image not found: {args.image}")
+else:
+    image_folder = args.image_folder
+    output_path = os.path.join(args.output_folder, "vivo_caption_qwen.json")
+    supported_exts = ('.jpg', '.jpeg', '.png', '.bmp', '.webp')
+    image_paths = sorted(
+        [os.path.join(image_folder, f) for f in os.listdir(image_folder) if f.lower().endswith(supported_exts)],
+        key=lambda x: os.path.basename(x)
+    )
 
 # 加载模型
 model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
@@ -19,13 +35,6 @@ model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
 
 # 加载预处理器
 processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
-
-# 获取并排序图像路径列表
-supported_exts = ('.jpg', '.jpeg', '.png', '.bmp', '.webp')
-image_paths = sorted(
-    [os.path.join(image_folder, f) for f in os.listdir(image_folder) if f.lower().endswith(supported_exts)],
-    key=lambda x: os.path.basename(x)
-)
 
 # 加载已有结果（如果有）
 if os.path.exists(output_path):

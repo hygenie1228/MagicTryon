@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import cv2
@@ -250,13 +251,29 @@ generator = torch.Generator(device=device).manual_seed(seed)
 if lora_path is not None:
     pipeline = merge_lora(pipeline, lora_path, lora_weight, device=device)
 
-cloth_id_book = ["013645_1.jpg"]
+parser = argparse.ArgumentParser()
+parser.add_argument("--input_dir", type=str, default=None, help="Processed video dir (e.g. data/4ddress_processed/00122_Inner_Take2_upper_body)")
+parser.add_argument("--output_dir", type=str, default=None, help="Output directory for result videos (overrides default save path)")
+args, _ = parser.parse_known_args()
 
-video_id = "00001"
-org_video_path    = f'datasets/person/customize/video/{video_id}/video.mp4'
-masked_video_path = f'datasets/person/customize/video/{video_id}/agnostic.mp4'
-mask_video_path   = f'datasets/person/customize/video/{video_id}/mask.mp4'
-pose_video_path   = f'datasets/person/customize/video/{video_id}/densepose.mp4'
+if args.input_dir is not None:
+    in_dir = args.input_dir.rstrip("/")
+    video_id = os.path.basename(in_dir)
+    org_video_path    = os.path.join(in_dir, "video.mp4")
+    masked_video_path = os.path.join(in_dir, "agnostic.mp4")
+    mask_video_path   = os.path.join(in_dir, "mask.mp4")
+    pose_video_path   = os.path.join(in_dir, "densepose.mp4")
+    cloth_id_book    = ["cloth.png"]
+    save_path        = args.output_dir.rstrip("/") if args.output_dir else os.path.join(in_dir, "result")
+else:
+    cloth_id_book = ["013645_1.jpg"]
+    video_id = "00001"
+    org_video_path    = f'datasets/person/customize/video/{video_id}/video.mp4'
+    masked_video_path = f'datasets/person/customize/video/{video_id}/agnostic.mp4'
+    mask_video_path   = f'datasets/person/customize/video/{video_id}/mask.mp4'
+    pose_video_path   = f'datasets/person/customize/video/{video_id}/densepose.mp4'
+    if args.output_dir:
+        save_path = args.output_dir.rstrip("/")
 
 use_repaint = False
 width, height, frame_count, v_fps = get_video_properties(org_video_path)
@@ -270,9 +287,21 @@ fps = 16
 negative_prompt = "衣服质量差的，纽扣不整齐的，色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
 
 for cloth_id in cloth_id_book:
-    cloth_image_path = os.path.join("datasets/garment/lower_body/cloth/", cloth_id)
-    cloth_line_image_path = os.path.join("datasets/garment/lower_body/cloth_anilines/", cloth_id)
-    cloth_text = get_description_from_json(cloth_id, "datasets/garment/lower_body/caption_qwen.json")
+    video_name = video_id.split('.')[0]
+    cloth_name = cloth_id.split('.')[0]
+    # Quit if output already exists (video or sanity_check dir with result)
+   
+
+    if args.input_dir is not None:
+        cloth_image_path = os.path.join(in_dir, cloth_id)
+        cloth_line_image_path = os.path.join(in_dir, "anilines", cloth_id)
+        if not os.path.isfile(cloth_line_image_path):
+            cloth_line_image_path = cloth_image_path  # fallback to cloth if AniLines not run
+        cloth_text = get_description_from_json(cloth_id, os.path.join(in_dir, "cloth_caption.json"))
+    else:
+        cloth_image_path = os.path.join("datasets/garment/lower_body/cloth/", cloth_id)
+        cloth_line_image_path = os.path.join("datasets/garment/lower_body/cloth_anilines/", cloth_id)
+        cloth_text = get_description_from_json(cloth_id, "datasets/garment/lower_body/caption_qwen.json")
 
     prompt = "Model is wearing " + cloth_text
     print(prompt)

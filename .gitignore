@@ -1,0 +1,7 @@
+__pycache__/
+**/__pycache__/*
+*.whl
+datasets/garment/vivo
+samples/
+inference/customize/gen_mask/ckpt
+results/

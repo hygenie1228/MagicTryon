@@ -1,5 +1,6 @@
 import cv2
 import os
+import argparse
 
 def images_to_video(image_folder, output_video_path, fps=30, i=None):
     # 获取文件夹中的所有图像文件并排序
@@ -39,11 +40,18 @@ def images_to_video(image_folder, output_video_path, fps=30, i=None):
 
 # 示例调用
 if __name__ == "__main__":
-    seq_name = '00001'
-    base_path = f'datasets/person/customize/video/{seq_name}'
-    last_i = None  # 只处理最后i张图像
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', default='datasets/human_sample/lower_body/1060665_detail/video.mp4')
+    parser.add_argument('--output', default='datasets/human_sample/lower_body/1060665_detail/video.mp4')
+    args = parser.parse_args()
+
+    base_path = args.input
+    out_path = args.input
+    last_i = None
+
+    os.makedirs(out_path, exist_ok=True)
 
     images_to_video(f'{base_path}/images', f'{base_path}/video.mp4', fps=30, i=last_i)
     images_to_video(f'{base_path}/agnostic', f'{base_path}/agnostic.mp4', fps=30, i=last_i)
-    images_to_video(f'{base_path}/mask', f'{base_path}/mask.mp4', fps=30, i=last_i)
-    images_to_video(f'{base_path}/image-densepose', f'{base_path}/densepose.mp4', fps=30, i=last_i)
+    images_to_video(f'{base_path}/masks', f'{base_path}/mask.mp4', fps=30, i=last_i)
+    images_to_video(f'{base_path}/densepose', f'{base_path}/densepose.mp4', fps=30, i=last_i)

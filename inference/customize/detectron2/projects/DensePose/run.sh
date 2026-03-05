@@ -4,19 +4,25 @@
 FOLDER_IDS=(1)
 
 # 模型配置与权重
-CONFIG="configs/densepose_rcnn_R_50_FPN_s1x.yaml"
-MODEL_URL="https://dl.fbaipublicfiles.com/densepose/densepose_rcnn_R_50_FPN_s1x/165712039/model_final_162be9.pkl"
+# Path from repo root (when run via video_preprocess.sh) or use configs/ when run from DensePose dir
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG="${SCRIPT_DIR}/configs/densepose_rcnn_R_101_FPN_s1x.yaml"
+MODEL_URL="https://dl.fbaipublicfiles.com/densepose/densepose_rcnn_R_101_FPN_s1x/165712084/model_final_c6ab63.pkl"
 
-# 根路径
-BASE_PATH="datasets/person/customize/video"
-
-for ID in "${FOLDER_IDS[@]}"; do
-  # 格式化编号为五位数，例如 9 -> 00009
-  FOLDER_ID=$(printf "%05d" "$ID")
-  
-  INPUT_DIR="${BASE_PATH}/${FOLDER_ID}/images"
-  OUTPUT_DIR="${BASE_PATH}/${FOLDER_ID}/"
-  
-  echo "Processing folder: $FOLDER_ID"
+# When called from video_preprocess.sh: first arg is OUT_DIR (e.g. data/4ddress_processed/00122_Inner_Take2_upper_body)
+if [[ -n "${1:-}" ]]; then
+  INPUT_DIR="$1/images"
+  OUTPUT_DIR="$1/"
+  echo "Processing: $INPUT_DIR -> $OUTPUT_DIR"
   python inference/customize/detectron2/projects/DensePose/apply_net.py show "$CONFIG" "$MODEL_URL" "$INPUT_DIR" "$OUTPUT_DIR" dp_segm -v
-done
+else
+  # Legacy: use hardcoded base path and folder list
+  BASE_PATH="datasets/person/customize/video"
+  for ID in "${FOLDER_IDS[@]}"; do
+    FOLDER_ID=$(printf "%05d" "$ID")
+    INPUT_DIR="${BASE_PATH}/${FOLDER_ID}/images"
+    OUTPUT_DIR="${BASE_PATH}/${FOLDER_ID}/"
+    echo "Processing folder: $FOLDER_ID"
+    python inference/customize/detectron2/projects/DensePose/apply_net.py show "$CONFIG" "$MODEL_URL" "$INPUT_DIR" "$OUTPUT_DIR" dp_segm -v
+  done
+fi

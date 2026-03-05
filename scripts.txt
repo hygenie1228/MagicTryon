@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=4 python inference/video_tryon/predict_video_tryon_customize.py

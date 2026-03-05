@@ -288,8 +288,8 @@ class ShowAction(InferenceAction):
         entry_idx = context["entry_idx"] + 1
         # out_fname = cls._get_out_fname(entry_idx, context["out_fname"])
         # out_dir = os.path.dirname(out_fname)
-        out_fname = save_path + '/image-densepose/' + image_fpath.split('/')[-1]
-        out_dir = save_path + '/image-densepose'
+        out_fname = save_path + '/densepose/' + image_fpath.split('/')[-1]
+        out_dir = save_path + '/densepose'
         if len(out_dir) > 0 and not os.path.exists(out_dir):
             os.makedirs(out_dir)
         cv2.imwrite(out_fname, image_vis)

@@ -1,4 +1,5 @@
 import os
+import argparse
 from PIL import Image
 from tqdm import tqdm
 import torch
@@ -17,9 +18,8 @@ def apply_inverse_mask_torch(image_dir, mask_dir, output_dir):
     for filename in tqdm(image_files, desc="Processing images"):
         image_path = os.path.join(image_dir, filename)
         prefix = filename.replace('.png', '')
-        mask_name = prefix + '_mask.png'  # 假设 mask 是 .png 格式
+        mask_name = prefix + '.png'  # 假设 mask 是 .png 格式
         mask_path = os.path.join(mask_dir, mask_name)
-
         if not os.path.exists(mask_path):
             print(f"Mask not found for {filename}")
             continue
@@ -46,11 +46,20 @@ def apply_inverse_mask_torch(image_dir, mask_dir, output_dir):
         # 保存为图片
         masked_image = to_pil(masked_tensor)
         output_path = os.path.join(output_dir, filename.replace('.jpg', '.png'))
+        
         masked_image.save(output_path)
 
 # 示例使用
 if __name__ == "__main__":
-    image_folder = "datasets/person/customize/video/00001/images"
-    mask_folder = "datasets/person/customize/video/00001/mask"
-    output_folder = "datasets/person/customize/video/00001/agnostic"
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--image', default='datasets/human_sample/lower_body/1060665_detail/images')
+    parser.add_argument('--mask', default='datasets/human_sample/lower_body/1060665_detail/masks')
+    parser.add_argument('--output', default='datasets/human_sample/lower_body/1060665_detail/agnostic')
+    args = parser.parse_args()
+
+    image_folder = args.image
+    mask_folder = args.mask
+    output_folder = args.output
+
     apply_inverse_mask_torch(image_folder, mask_folder, output_folder)
